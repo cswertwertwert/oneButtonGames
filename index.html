@@ -2,6 +2,7 @@
 <!-- oneButtonGames V4
 A series of simple games that only need one button
 Last Modified Jul 25
+Use "npm i -g http-server" and "http-server" for codespace port
 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0,
 	maximum-scale=1.0, user-scalable=no">
@@ -11,7 +12,7 @@ Last Modified Jul 25
 		--char: "🐸";
 		--bc: rgb(40,40,40);
 		--fc: rgb(200,200,200);
-		font-size: 1vw;
+		font-size: .7vw;
 	}
 	body{
 		background: var(--bc);
@@ -42,8 +43,8 @@ Last Modified Jul 25
 	canvas {
 		border: solid;
 	   	border-radius: 10px;
-	   	width: 99%;
-	   	height: 99%;
+	   	width: 95%;
+	   	height: 70%;
 	}
 	table {
 		margin: auto;
@@ -95,8 +96,8 @@ Last Modified Jul 25
 	}
 	.frog::before{
 		content: var(--char);
-      display: inline-block;
-      font-size: 20px;
+		display: inline-block;
+		font-size: 20px;
 	}
 	.car{
 		background-image: none;
@@ -105,8 +106,8 @@ Last Modified Jul 25
 	}
 	.car::before{
 		content: var(--char);
-      display: inline-block;
-      font-size: 50px;
+		display: inline-block;
+		font-size: 50px;
 	}
 	</style>
 </head>
@@ -152,7 +153,12 @@ Last Modified Jul 25
 			</select>
 			<button class=btn onclick=chooseGame()>Start the Game</button>
 			<button class=btn onclick=resetPlayers()>Clear Players</button>
-			&nbsp FPS: <input type=number value=60 min=1 max=100 onchange="{framerate=1000/this.value}">
+			&nbsp FPS: <input id=fps type=number value=60 min=1 max=100 onchange="{framerate=1000/this.value}">
+			&nbsp Diplay: <Select id=type class=drop onchange="displayType=this.value;">
+				<option>HTML</option>
+				<option>Canvas</option>
+				<option>CSS</option>
+			</Select>
 		</div>
 	</div>
 	<br>
@@ -167,21 +173,24 @@ Add player queueing for dynamic arrays
 Consolidate audio playing into function
 Try canvas for resource heavier games
 Add control dials/button for needed games
-Change everything to rem for scaling
+Change everything to the same thing for scaling
 */
 
 //========================================== Starting Stuff ==========================================
-	let gamemode = "home", framerate = 17, temp, startScreen;
+	let gamemode = "home", framerate = 17, temp, startScreen = {}, displayType = "HTML";
 	let timeLimit, currTime = Date.now(); startTime = Date.now();
 	let mousePlayer = false, gameState = 0, canvas, ctx;
-	let players = [{score: 0, pressed: 0, status: 0, colour: "white", id: "M"}];
+	let players = [{score: 0, pressed: 0, status: 0, colour: "white", id: "M", emoji: "😊"}];
 	function resetPlayers() {
-		players = [{score: 0, pressed: 0, status: 0, colour: "white", id: "M"}];
+		players = [{score: 0, pressed: 0, status: 0, colour: "white", id: "M", emoji: "😊"}];
 		keyPlayers = {}; // Map from key -> player index
 	}
 
 	function chooseGame() {
-		startScreen = main.innerHTML;
+		startScreen.html = main.innerHTML;
+		startScreen.game = document.getElementById('game').selectedIndex;
+		startScreen.fps = fps.value
+		startScreen.type = document.getElementById('type').selectedIndex;
 		gamemode = game.value.toLowerCase().replace(/[-_\s](.)/g, (_, c) => c.toUpperCase());
 		header.innerHTML = game.value;
 		main.innerHTML = `<button class=btn onclick=goBack();>Go Back</button>&ensp;`;
@@ -205,7 +214,10 @@ Change everything to rem for scaling
 
 	function goBack() {
 		topStuff.removeAttribute("style");
-		main.innerHTML = startScreen;
+		main.innerHTML = startScreen.html;
+		document.getElementById('game').selectedIndex = startScreen.game;
+		fps.value = startScreen.fps;
+		document.getElementById('type').selectedIndex = startScreen.type;
 		main.removeAttribute("style");
 		header.innerHTML = "Select A Game";
 		header.removeAttribute("style");
@@ -247,8 +259,6 @@ Change everything to rem for scaling
 		if (gamemode == "home") gZone.innerHTML = "";
 		else window[gamemode]();
 		currTime = Date.now();
-		//=======GAMEPAD DETECTION===============
-		const gamepads = navigator.getGamepads();
 		if (mousePlayer == true && players[0].pressed == 0) players[0].pressed = 1;
 		else if (mousePlayer == false) players[0].pressed = 0;
 		for (let p of players) {
@@ -256,10 +266,14 @@ Change everything to rem for scaling
 			if (p.pressed === 1) p.pressed = currTime;
 			if (gamemode == "home") {
 				if (p.pressed == currTime) p.colour = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-				gZone.innerHTML += `<label style='color:${p.colour}'>${p.id}<progress value=${(p.pressed != 0) ? 1 : 0} 
-				style='width:3%; accent-color:${p.colour};'></progress></label>`;
+				// gZone.innerHTML += `<label style='color:${p.colour}'>${p.id}<progress value=${(p.pressed != 0) ? 1 : 0} 
+				// 	style='width:3%; accent-color:${p.colour};'></progress></label>`;
+				p.h = 50; p.w = 50; p.x = players[p]/players.length*window.innerWidth; p.y = 0;
+				displayPlayersGame("border-radius: 10px;");
 			}
 		}
+		//=======GAMEPAD DETECTION===============
+		// const gamepads = navigator.getGamepads();
 		// for (let i in gamepads) {
 		// 	let gamepad = gamepads[i];
 		// 	if (gamepad == null) continue;
@@ -290,12 +304,18 @@ Change everything to rem for scaling
 			setPlayerAngles();
 			let game = "";
 			for (let p of players) {
-				game += `<div style='position:absolute; bottom:40%; left:50%; width:300; height:50;
-					transform-origin:0; transform: rotate(${p.angle}deg);'>
-					<div style='position:absolute; left:100%; background:${p.colour};'>${p.id}</div></div>`;
+				game += `<div style='position:absolute; width:60px; height:30px; background:${p.colour};
+					left:calc(50% + 20rem * cos(${p.angle-90}deg)); top:calc(50% + 20rem * sin(${p.angle-90}deg));
+					transform: rotate(${p.angle}deg); display:flex; align-items:center; justify-content:center;'>${p.id}</div>`;
 			}
 			gZone.innerHTML = game;
+			gZone.style.position = "static";
 			gameState = 1;
+		}
+		if (gameState == 1) {
+			for (let p of players) {
+
+			}
 		}
 	}
 
@@ -2330,6 +2350,42 @@ Change everything to rem for scaling
 		for (let i = 0; i < alivePlayers.length; i++) {
 			alivePlayers[i].angle = 360 * (i / alivePlayers.length);
 		}
+	}
+
+	function displayPlayersGame(info) {
+		if (displayType == "HTML") {
+			let game = "";
+			for (let p of players) {
+				game += `<div style='background: ${p.colour}; position: relative; width: ${p.w}; height: ${p.h};
+					left: ${p.x}; bottom: ${p.y}; z-index: -1; `;
+				// for (let i in info) {
+				// 	if (info[i] in p) game += `${info[i]}: ${p[info[i]]}; `;
+				// 	else game += `${info[i]}`;
+				// }
+				game += `'>${p.id}</div>`;
+			}
+			gZone.innerHTML = game;
+			return;
+		}
+		else if (displayType == "Canvas") {
+			if (!canvas || !gZone.contains(canvas)) {
+				canvas = document.createElement("canvas");
+				gZone.appendChild(canvas);
+			}
+			ctx = canvas.getContext("2d");
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			for (let p of players) {
+				ctx.fillStyle = p.colour;
+				ctx.fillRect(p.left, canvas.height*(1-p.bottom/100)-p.height, p.width, p.height);
+			}
+			return;
+		}
+		else if (displayType == "CSS") {
+			if (gZone.firstChild.id != "") {
+
+			}
+		}
+		else {return "No players data available.";}
 	}
 
 	function rollCredits() {
