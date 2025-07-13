@@ -4,15 +4,14 @@ A series of simple games that only need one button
 Last Modified Jul 25
 Use "npm i -g http-server" and "http-server" for codespace port
 -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0,
-	maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1.0, user-scalable=no">
 <head>
 	<style>
 	:root{
 		--char: "🐸";
 		--bc: rgb(40,40,40);
 		--fc: rgb(200,200,200);
-		font-size: .7vw;
+		font-size: 8px;
 	}
 	body{
 		background: var(--bc);
@@ -40,11 +39,16 @@ Use "npm i -g http-server" and "http-server" for codespace port
 	   color: rgb(200,200,200);
 	   font-size: smaller;
 	}
+	.game {
+		position: relative;
+		justify-self: center;
+		border: solid;
+	   	border-radius: 10px;
+		font-size: 5rem;
+	}
 	canvas {
 		border: solid;
 	   	border-radius: 10px;
-	   	width: 95%;
-	   	height: 70%;
 	}
 	table {
 		margin: auto;
@@ -80,34 +84,11 @@ Use "npm i -g http-server" and "http-server" for codespace port
 	   height: 25px;
 	   background-color: red;
 	}
-	.kaque{
-		width: 50%;
-		text-align: center;
-	}
-	.brick {
-		width: 50px;
-		height: 50px;
-		background: fuchsia;
-	}
-	.frog{
+	.char{
 		background-image: none;
-		height: 25px;
-		width: 25px;
 	}
-	.frog::before{
+	.char::before{
 		content: var(--char);
-		display: inline-block;
-		font-size: 20px;
-	}
-	.car{
-		background-image: none;
-		height: 50px;
-		width: 50px;
-	}
-	.car::before{
-		content: var(--char);
-		display: inline-block;
-		font-size: 50px;
 	}
 	</style>
 </head>
@@ -153,7 +134,7 @@ Use "npm i -g http-server" and "http-server" for codespace port
 			</select>
 			<button class=btn onclick=chooseGame()>Start the Game</button>
 			<button class=btn onclick=resetPlayers()>Clear Players</button>
-			&nbsp FPS: <input id=fps type=number value=60 min=1 max=100 onchange="{framerate=1000/this.value}">
+			&nbsp FPS: <input id=asdf type=number value=60 min=1 max=100 onchange="{fps=1000/this.value}">
 			&nbsp Diplay: <Select id=type class=drop onchange="displayType=this.value;">
 				<option>HTML</option>
 				<option>Canvas</option>
@@ -177,8 +158,8 @@ Change everything to the same thing for scaling
 */
 
 //========================================== Starting Stuff ==========================================
-	let gamemode = "home", framerate = 17, temp, startScreen = {}, displayType = "HTML";
-	let timeLimit, currTime = Date.now(); startTime = Date.now();
+	let gamemode = "home", fps = 17, temp, startScreen = {}, displayType = "HTML";
+	let maxX, maxY, timeLimit, currTime = Date.now(); startTime = Date.now();
 	let mousePlayer = false, gameState = 0, canvas, ctx;
 	let players = [{score: 0, pressed: 0, status: 0, colour: "white", id: "M", emoji: "😊"}];
 	function resetPlayers() {
@@ -189,7 +170,7 @@ Change everything to the same thing for scaling
 	function chooseGame() {
 		startScreen.html = main.innerHTML;
 		startScreen.game = document.getElementById('game').selectedIndex;
-		startScreen.fps = fps.value
+		startScreen.asdf = asdf.value
 		startScreen.type = document.getElementById('type').selectedIndex;
 		gamemode = game.value.toLowerCase().replace(/[-_\s](.)/g, (_, c) => c.toUpperCase());
 		header.innerHTML = game.value;
@@ -210,13 +191,14 @@ Change everything to the same thing for scaling
 		temp = "";
 		timeLimit = 0;
 		startTime = Date.now();
+		gZone._cssInitialized = false;
 	}
 
 	function goBack() {
 		topStuff.removeAttribute("style");
 		main.innerHTML = startScreen.html;
 		document.getElementById('game').selectedIndex = startScreen.game;
-		fps.value = startScreen.fps;
+		asdf.value = startScreen.asdf;
 		document.getElementById('type').selectedIndex = startScreen.type;
 		main.removeAttribute("style");
 		header.innerHTML = "Select A Game";
@@ -256,22 +238,36 @@ Change everything to the same thing for scaling
 
 	gameFrame();
 	async function gameFrame(){
-		if (gamemode == "home") gZone.innerHTML = "";
-		else window[gamemode]();
+		// if (gamemode == "home") gZone.innerHTML = "";
+		// else window[gamemode]();
+		if (gamemode != "home") window[gamemode]();
+		maxX = ~~(window.innerWidth * .9);
+		maxY = ~~(window.innerHeight * .7);
 		currTime = Date.now();
 		if (mousePlayer == true && players[0].pressed == 0) players[0].pressed = 1;
 		else if (mousePlayer == false) players[0].pressed = 0;
-		for (let p of players) {
+		for (let [i,p] of players.entries()) {
 			if (p.id == undefined) continue;
 			if (p.pressed === 1) p.pressed = currTime;
 			if (gamemode == "home") {
-				if (p.pressed == currTime) p.colour = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-				// gZone.innerHTML += `<label style='color:${p.colour}'>${p.id}<progress value=${(p.pressed != 0) ? 1 : 0} 
-				// 	style='width:3%; accent-color:${p.colour};'></progress></label>`;
-				p.h = 50; p.w = 50; p.x = players[p]/players.length*window.innerWidth; p.y = 0;
-				displayPlayersGame("border-radius: 10px;");
+				if (p.h == null) {p.h = 50; p.w = 50; p.x = Math.random()*maxX; p.y = .5*maxY; p.dx = 0; p.dy = 0; p.colour = "white"; p.emoji = "😊";}
+				p.y += (p.pressed != 0) ? fps/2 : -fps/2;
+				if (p.y < 0) p.y = 0;
+				if (p.y > maxY-p.h) p.y = maxY-p.h;
+				if (p.y > maxY-1.1*p.h && p.status == 0) {
+					p.colour = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+					p.status = 1;
+				} else if (p.y < maxY-1.1*p.h) p.status = 0;
+				if (p.dx != 0) {
+					if (p.dx > 0) {p.x += 1; p.dx -= 1;}
+					else if (p.dx < 0 ) {p.x -= 1; p.dx += 1;}
+				}
+				if (p.x < 0) p.x = 0;
+					else if (p.x > maxX - p.w) p.x = maxX - p.w;
+				else if (p.dx == 0 && Math.random() < 0.01) p.dx = (Math.random() < .3) ? Math.round(Math.random()*200)-100 : 0;
 			}
 		}
+		if (gamemode == "home") displayPlayersGame([]);
 		//=======GAMEPAD DETECTION===============
 		// const gamepads = navigator.getGamepads();
 		// for (let i in gamepads) {
@@ -288,7 +284,7 @@ Change everything to the same thing for scaling
 		// 		}
 		// 	}
 		// }
-		await sleep(framerate);
+		await sleep(fps);
 		gameFrame();
 	}
 
@@ -596,7 +592,7 @@ Change everything to the same thing for scaling
 			sZone.style.position = "fixed";
 		}
 		if (gameState == 1) {
-			let temp2 = Math.ceil(framerate/5), game = "";
+			let temp2 = Math.ceil(fps/5), game = "";
 			gZone.style.width = parseFloat(gZone.offsetWidth)+(temp2);
 			topStuff.style.width = parseInt(gZone.offsetWidth-50);
 			sZone.innerHTML = Math.round(parseInt(gZone.offsetWidth) - 1.5*window.innerWidth);
@@ -622,7 +618,7 @@ Change everything to the same thing for scaling
 				game += ` left:${p.score+100}; position:absolute; z-index:${p.id};'>${p.id}</div>`;
 			}
 			if (rando.checked) {
-				if (Math.random() < .5*(framerate/100)) temp.push([Math.round(parseFloat(gZone.offsetWidth)-50),Math.round(Math.random()*91)]);
+				if (Math.random() < .5*(fps/100)) temp.push([Math.round(parseFloat(gZone.offsetWidth)-50),Math.round(Math.random()*91)]);
 			} else {
 				if (Math.floor(gZone.offsetWidth / 300) > Math.floor((gZone.offsetWidth - temp2) / 300) && gZone.offsetWidth < 15000) {
 					temp2 = [];
@@ -641,7 +637,7 @@ Change everything to the same thing for scaling
 					}
 				}
 				else if (gZone.offsetWidth >= 20000) {
-					if (Math.random() < .5*(framerate/100)) temp.push([Math.round(parseFloat(gZone.offsetWidth)-50),Math.round(Math.random()*91)]);
+					if (Math.random() < .5*(fps/100)) temp.push([Math.round(parseFloat(gZone.offsetWidth)-50),Math.round(Math.random()*91)]);
 				}
 			}
 			for (let i in temp) {
@@ -670,7 +666,7 @@ Change everything to the same thing for scaling
 			ctx = canvas.getContext('2d');
 		}
 		if (gameState == 1) {
-			let temp2 = Math.ceil(framerate/5), game = "";
+			let temp2 = Math.ceil(fps/5), game = "";
 			gZone.style.width = parseFloat(gZone.offsetWidth)+(temp2);
 			canvas.width = parseFloat(gZone.offsetWidth);
 			ctx = canvas.getContext('2d');
@@ -707,7 +703,7 @@ Change everything to the same thing for scaling
 				ctx.fillText(p.id, p.score+100, canvas.height*(1-p.status/100));
 			}
 			if (rando.checked) {
-				if (Math.random() < .5*(framerate/100)) temp.push([Math.round(parseFloat(gZone.offsetWidth)-50),Math.round(Math.random()*91)]);
+				if (Math.random() < .5*(fps/100)) temp.push([Math.round(parseFloat(gZone.offsetWidth)-50),Math.round(Math.random()*91)]);
 			} else {
 				if (Math.floor(gZone.offsetWidth / 300) > Math.floor((gZone.offsetWidth - temp2) / 300) && gZone.offsetWidth < 15000) {
 					temp2 = [];
@@ -726,7 +722,7 @@ Change everything to the same thing for scaling
 					}
 				}
 				else if (gZone.offsetWidth >= 20000) {
-					if (Math.random() < .5*(framerate/100)) temp.push([Math.round(parseFloat(gZone.offsetWidth)-50),Math.round(Math.random()*91)]);
+					if (Math.random() < .5*(fps/100)) temp.push([Math.round(parseFloat(gZone.offsetWidth)-50),Math.round(Math.random()*91)]);
 				}
 			}
 			for (let i in temp) {
@@ -843,7 +839,7 @@ Change everything to the same thing for scaling
 			startTime = currTime;
 		}
 		if (gameState == 1) {
-			let temp2 = Math.ceil(framerate/5)
+			let temp2 = Math.ceil(fps/5)
 			gZone.innerHTML = `The target is ${temp}<br>Time remaining: ${timeLimit - currTime}<br><br>`;
 			for (let p of players) {
 				if (p.pressed != 0) (rando.checked && Math.random()>.5) ? p.score -= temp2 : p.score += temp2;
@@ -940,7 +936,7 @@ Change everything to the same thing for scaling
 			}
 			for (let p of players) {
 				if (isNaN(p.realScore)) p.realScore =  0;
-				if (p.pressed != 0 && p.status != "Dead") p.score += Math.ceil(framerate/5)/10;
+				if (p.pressed != 0 && p.status != "Dead") p.score += Math.ceil(fps/5)/10;
 				if (p.status != "Dead") game += `<div class=alive style='background-color: ${p.colour}; `;
 				else game += `<div class=dead style='`;
 				if (p.score >= 97) {
@@ -960,14 +956,14 @@ Change everything to the same thing for scaling
 				}
 			}
 			let temp3 = ["🚗","🛻","🚕","🚚","🚙","🚎"];
-			if (Math.random() < .1*framerate && temp.length < 10) {
-				temp.push([temp3[Math.floor(Math.random()*temp3.length)],(Math.random()*80)+10,50,framerate/10*(Math.random()-.5)]);
+			if (Math.random() < .1*fps && temp.length < 10) {
+				temp.push([temp3[Math.floor(Math.random()*temp3.length)],(Math.random()*80)+10,50,fps/10*(Math.random()-.5)]);
 				temp[temp.length-1][2] = (temp[temp.length-1][3] < 0) ? 105 : -5;
 			}
 			if (rando.checked && Math.random() < .001) {
 				temp3 = Math.random()-.5;
-				temp.push(["🏎️",((temp3+.5)*80)+10,(temp3 > 0) ? 100 : 0,(temp3 > 0) ? -1*framerate/5 : framerate/5]);
-				temp.push(["🚓",((temp3+.5)*80)+10,(temp3 > 0) ? 106 : -6,(temp3 > 0) ? -1*framerate/5 : framerate/5]);
+				temp.push(["🏎️",((temp3+.5)*80)+10,(temp3 > 0) ? 100 : 0,(temp3 > 0) ? -1*fps/5 : fps/5]);
+				temp.push(["🚓",((temp3+.5)*80)+10,(temp3 > 0) ? 106 : -6,(temp3 > 0) ? -1*fps/5 : fps/5]);
 			}
 			gZone.innerHTML = game + "<br>";
 		}
@@ -1040,7 +1036,7 @@ Change everything to the same thing for scaling
 			temp = [["spike",Math.round(parseFloat(gZone.offsetWidth)-50),0,25,25]];
 		}
 		if (gameState == 1) {
-			let temp2 = Math.ceil(framerate/3), game = "";
+			let temp2 = Math.ceil(fps/3), game = "";
 			gZone.style.width = parseFloat(gZone.offsetWidth)+(temp2);
 			topStuff.style.width = parseInt(gZone.offsetWidth-50);
 			sZone.innerHTML = Math.round(parseInt(gZone.offsetWidth) - 1.5*window.innerWidth);
@@ -1079,7 +1075,7 @@ Change everything to the same thing for scaling
 				game += `left:${p.score+100}; position:absolute;'>${p.id}</div>`;
 			}
 			if (rando.checked) {
-				if (Math.random() < .5*(framerate/100)) {
+				if (Math.random() < .5*(fps/100)) {
 					if (Math.random() < .85) temp.push(["spike",Math.round(parseFloat(gZone.offsetWidth)-10),Math.round(Math.random()*91),25,25]);
 					if (Math.random() < .15) temp.push(["spike",Math.round(parseFloat(gZone.offsetWidth)-10),0,25,25]);
 					if (Math.random() < .65) temp.push(["floor",Math.round(parseFloat(gZone.offsetWidth)-10),Math.round(Math.random()*91),250,3]);
@@ -1091,9 +1087,9 @@ Change everything to the same thing for scaling
 					temp.push(["floor",Math.round(parseFloat(gZone.offsetWidth)-10),75,Math.random()*500,3]);
 				}
 				let temp3 = [12.5,37.5,62.5];
-				if (Math.random() < .25*(framerate/100)) temp.push(["floor",Math.round(parseFloat(gZone.offsetWidth)-50),temp3[Math.floor(Math.random()*3)],50,3]);
+				if (Math.random() < .25*(fps/100)) temp.push(["floor",Math.round(parseFloat(gZone.offsetWidth)-50),temp3[Math.floor(Math.random()*3)],50,3]);
 				temp3 = [0,12.5,25,37.5,50,62.5,75,90.5];
-				if (Math.random() < Math.pow(parseInt(sZone.innerHTML),.25)/(2000/framerate)) {
+				if (Math.random() < Math.pow(parseInt(sZone.innerHTML),.25)/(2000/fps)) {
 					temp.push(["spike",Math.round(parseFloat(gZone.offsetWidth)-50),temp3[Math.floor(Math.random()*8)],25,25]);
 				}
 			}
@@ -1228,7 +1224,7 @@ Change everything to the same thing for scaling
 					players[temp].status = "&#129364";
 				}
 				else if (p.pressed == currTime) p.score--;
-				else if (pcount == temp && timeLimit-currTime < 1000) p.score += framerate/1000;
+				else if (pcount == temp && timeLimit-currTime < 1000) p.score += fps/1000;
 				pcount++;
 			}
 			sZone.innerHTML = displayPlayersTable('status');
@@ -1303,7 +1299,7 @@ Change everything to the same thing for scaling
 					players[temp].status = "&#129364";
 					startTime = currTime;
 				}
-				else if (pcount == temp && (currTime-startTime) % Math.round(framerate) == 0) {
+				else if (pcount == temp && (currTime-startTime) % Math.round(fps) == 0) {
 					p.score -= rando.checked ? Math.floor(Math.random()*7) : 3;
 				}
 				else if (p.pressed == currTime) p.score -= 5;
@@ -1531,7 +1527,7 @@ Change everything to the same thing for scaling
 			gZone.innerHTML = "Set your angle";
 			let game = "<div style='position: relative; width: 90%; height: 25; z-index: -1; background:var(--fc); justify-self: center'>";
 			for (let p of players) {
-				if (p.pressed != 0) p.status[0] += framerate/16;
+				if (p.pressed != 0) p.status[0] += fps/16;
 				if (p.status[0] > 90) p.status[0] = 0;
 				game += `<div class=alive style='background:${p.colour}; position: absolute;
 					left:${p.status[0]/90*100}%; z-index:1'>${p.id}</div>`;
@@ -1547,8 +1543,8 @@ Change everything to the same thing for scaling
 			gZone.innerHTML = "Spam for power";
 			let game = "<div style='position: relative; width: 90%; height: 25; z-index: -1; background:var(--fc); justify-self: center'>";
 			for (let p of players) {
-				if (p.pressed == currTime) p.status[1] += 64/framerate;
-				else p.status[1] -= 2/framerate;
+				if (p.pressed == currTime) p.status[1] += 64/fps;
+				else p.status[1] -= 2/fps;
 				if (p.status[1] < 0) p.status[1] = 0;
 				game += `<div class=alive style='background:${p.colour}; position: absolute;
 					left:${p.status[1]}%; z-index:1'>${p.id}</div>`;
@@ -1750,7 +1746,7 @@ Change everything to the same thing for scaling
 				else temp = Math.round(Math.random()*3);
 				gZone.innerHTML = temp2[temp] + "<br>";
 				if (rando.checked) gZone.innerHTML = temp2[temp].split(" ").sort(() => Math.random() - 0.5).join(" ") + "<br>";
-				let temp3 = (players.filter(p => p.status != 'Dead').length > 1) ? true : false;
+				let temp3 = (players.filter(p => p.status != 'Dead').length > 0) ? true : false;
 				gameState = (temp3) ? 1 : 2;
 				if (gameState == 2) {
 					gZone.innerHTML = "GAME OVER! <br> Rounds obeyed:";
@@ -1945,10 +1941,10 @@ Change everything to the same thing for scaling
 						}
 					}
 					if (p.pressed != 0) {
-						p.rotate += 200*framerate/1000;
+						p.rotate += 200*fps/1000;
 						p.score += p.rotate/5;
 					}
-					else p.rotate -= 500*framerate/1000;
+					else p.rotate -= 500*fps/1000;
 					p.status = (p.status < 0) ? 0 : p.status;
 					p.rotate = (p.rotate < 0) ? 0 : p.rotate;
 					if (p.rotate > 90 || p.score < (parseFloat(gZone.style.width)-105)*window.innerWidth/100) {
@@ -2354,35 +2350,81 @@ Change everything to the same thing for scaling
 
 	function displayPlayersGame(info) {
 		if (displayType == "HTML") {
-			let game = "";
-			for (let p of players) {
-				game += `<div style='background: ${p.colour}; position: relative; width: ${p.w}; height: ${p.h};
-					left: ${p.x}; bottom: ${p.y}; z-index: -1; `;
-				// for (let i in info) {
-				// 	if (info[i] in p) game += `${info[i]}: ${p[info[i]]}; `;
-				// 	else game += `${info[i]}`;
-				// }
+			gZone._cssInitialized = false;
+			let game = `<div class=game style='width: ${maxX}px; height: ${maxY}px;'>`;
+			for (let [i,p] of players.entries()) {
+				game += `<div style='background: ${p.colour}; position: absolute; width: ${p.w}; height: ${p.h};
+					left: ${p.x}; bottom: ${p.y}; z-index: ${i};`;
 				game += `'>${p.id}</div>`;
+			}
+			game += "</div>";
+			for (let [i,t] of info.entries()) {
+				game += `<div style='position: absolute; top: ${t.y}px; left: ${t.x}px; color: ${t.colour};'>${t.text}</div>`;
 			}
 			gZone.innerHTML = game;
 			return;
 		}
 		else if (displayType == "Canvas") {
+			gZone._cssInitialized = false;
 			if (!canvas || !gZone.contains(canvas)) {
+				gZone.innerHTML = "";
 				canvas = document.createElement("canvas");
 				gZone.appendChild(canvas);
+				document.querySelector("canvas").setAttribute("id", "canvas");
 			}
+			canvas.width = maxX;
+			canvas.height = maxY;
+			canvas.style.width = canvas.width + "px";
+			canvas.style.height = canvas.height + "px";
 			ctx = canvas.getContext("2d");
 			ctx.clearRect(0, 0, canvas.width, canvas.height);
 			for (let p of players) {
 				ctx.fillStyle = p.colour;
-				ctx.fillRect(p.left, canvas.height*(1-p.bottom/100)-p.height, p.width, p.height);
+				if (p.angle) ctx.rotate(p.angle * Math.PI / 180);
+				ctx.fillRect(p.x, canvas.height*(1-p.y/maxY)-p.h, p.w, p.h);
+				ctx.fillStyle = "rgb(200,200,200)";
+				ctx.font = "5rem Georgia";
+				let text = ctx.measureText(p.id);
+				ctx.fillText(p.id, p.x+(p.w-text.width)/2, canvas.height*(1-p.y/maxY)-p.h/2+text.actualBoundingBoxAscent/2);
+				if (p.angle) ctx.rotate(0);
+			}
+			for (let t of info) {
+				ctx.fillStyle = t.colour;
+				if (t.angle) ctx.rotate(t.angle * Math.PI / 180);
+				ctx.fillRect(t.x, canvas.height*(1-t.y/maxY)-t.h, t.w, t.h);
+				if (t.angle) ctx.rotate(0);
 			}
 			return;
 		}
 		else if (displayType == "CSS") {
-			if (gZone.firstChild.id != "") {
-
+			if (!gZone._cssInitialized) {
+				gZone._cssInitialized = true;
+				gZone.innerHTML = "";
+				let game = `<div class=game style='width: ${maxX}px; height: ${maxY}px;'>`;
+				for (let [i,p] of players.entries()) {
+					game += `<div id=p${p.id} style='background: ${p.colour}; position: absolute; width: ${p.w}; height: ${p.h};
+						left: ${p.x}; bottom: ${p.y}; z-index: ${i};`;
+					game += `'>${p.id}</div>`;
+				}
+				game += "</div>";
+				for (let [i,t] of info.entries()) {
+					game += `<div style='position: absolute; top: ${t.y}px; left: ${t.x}px; color: ${t.colour};'>${t.text}</div>`;
+				}
+				gZone.innerHTML = game;
+			}
+			gZone.firstChild.style.width = maxX + "px";
+			gZone.firstChild.style.height = maxY + "px";
+			for (let [i,p] of players.entries()) {
+				let playerDiv = document.getElementById(`p${p.id}`);
+				if (!playerDiv) {
+					gZone.firstChild.innerHTML += `<div id=p${p.id} style='position: absolute; z-index: ${i};'>${p.id}</div>`;
+					playerDiv = document.getElementById(`p${p.id}`);
+				}
+				playerDiv.style.background = p.colour;
+				playerDiv.style.width = p.w + "px";
+				playerDiv.style.height = p.h + "px";
+				playerDiv.style.left = p.x + "px";
+				playerDiv.style.bottom = p.y + "px";
 			}
 		}
 		else {return "No players data available.";}
