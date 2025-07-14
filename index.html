@@ -288,12 +288,12 @@ Change everything to the same thing for scaling
 				p.x = maxX/2 + radius * Math.cos(p.angle*Math.PI/180);
 				p.y = maxY/2 + radius * Math.sin(p.angle*Math.PI/180);
 				p.w = 50;
-				p.h = 5;
+				p.h = 10;
 				p.angle0 = p.angle;
 			}
 			assets = [{
 				x: maxX/2 - 25, y: maxY/2 - 25, colour: "white", id: "ball",
-				w: 50, h: 50, angle: Math.random()*360, speed: Math.random()*15,
+				w: 50, h: 50, angle: Math.random()*360, speed: Math.random()*5,
 			}];
 			gameState = 1;
 		}
@@ -313,20 +313,26 @@ Change everything to the same thing for scaling
 						p.angle = p.angle0 - limit;
 						p.status = 0;
 					}
-					p.x = maxX/2 + radius * Math.cos(p.angle*Math.PI/180);
-					p.y = maxY/2 + radius * Math.sin(p.angle*Math.PI/180);
+					p.angle = Math.round(p.angle*10)/10;
+					p.x = Math.round(maxX/2 + radius * Math.cos(p.angle*Math.PI/180));
+					p.y = Math.round(maxY/2 + radius * Math.sin(p.angle*Math.PI/180));
 				}
-				if (complicatedCollide(assets[0], p)) {
-					assets[0].angle = p.angle + 180 + Math.random()*20;
-					if (rando.checked) {
-						assets[0].speed += Math.random()*2-1;
-						assets[0].w = Math.random()*40+10;
-						assets[0].h = Math.random()*40+10;
+				if (!p.collisionBuffer || p.collisionBuffer <= 0) {
+					if (complicatedCollide(assets[0], p)) {
+						assets[0].angle = Math.round((p.angle - 180 + (Math.random() * 20 - 20))*10)/10;
+						if (rando.checked) {
+							assets[0].speed += Math.random()*2-1;
+							assets[0].w = Math.random()*40+10;
+							assets[0].h = Math.random()*40+10;
+						}
+						p.collisionBuffer = 10;
 					}
+				} else {
+					p.collisionBuffer--;
 				}
 			}
-			assets[0].x += assets[0].speed * Math.cos(assets[0].angle*Math.PI/180);
-			assets[0].y += assets[0].speed * Math.sin(assets[0].angle*Math.PI/180);
+			assets[0].x += Math.round(assets[0].speed * Math.cos(assets[0].angle*Math.PI/180));
+			assets[0].y += Math.round(assets[0].speed * Math.sin(assets[0].angle*Math.PI/180));
 		}
 	}
 
@@ -2346,21 +2352,35 @@ Change everything to the same thing for scaling
 	}
 
 	function complicatedCollide(obj1, obj2) {
-		let cos = Math.cos((obj1.angle > 180) ? -obj1.angle : obj1.angle * Math.PI / 180);
-		let sin = Math.sin((obj1.angle > 180) ? -obj1.angle : obj1.angle * Math.PI / 180);
+		// Adjust for display positioning - convert to center coordinates
+		// Expand collision boxes slightly for better contact
+		let obj1CenterX = obj1.x + obj1.w / 2;
+		let obj1CenterY = obj1.y + obj1.h / 2;
+		let obj2CenterX = obj2.x + obj2.w / 2;
+		let obj2CenterY = obj2.y + obj2.h / 2;
+		
+		// Make collision boxes slightly smaller to look better
+		let obj1w = obj1.w*.7;
+		let obj1h = obj1.h*.7;
+		let obj2w = obj2.w*.7;
+		let obj2h = obj2.h*.7;
+
+		let cos = Math.cos(obj1.angle * Math.PI / 180);
+		let sin = Math.sin(obj1.angle * Math.PI / 180);
 		let a = [
-			[obj1.x + cos * (-obj1.w / 2) - sin * (-obj1.h / 2), obj1.y + sin * (-obj1.w / 2) + cos * (-obj1.h / 2)],
-			[obj1.x + cos * (obj1.w / 2) - sin * (-obj1.h / 2), obj1.y + sin * (obj1.w / 2) + cos * (-obj1.h / 2)],
-			[obj1.x + cos * (obj1.w / 2) - sin * (obj1.h / 2), obj1.y + sin * (obj1.w / 2) + cos * (obj1.h / 2)],
-			[obj1.x + cos * (-obj1.w / 2) - sin * (obj1.h / 2), obj1.y + sin * (-obj1.w / 2) + cos * (obj1.h / 2)]
+			[obj1CenterX + cos * (-obj1w / 2) - sin * (-obj1h / 2), obj1CenterY + sin * (-obj1w / 2) + cos * (-obj1h / 2)],
+			[obj1CenterX + cos * (obj1w / 2) - sin * (-obj1h / 2), obj1CenterY + sin * (obj1w / 2) + cos * (-obj1h / 2)],
+			[obj1CenterX + cos * (obj1w / 2) - sin * (obj1h / 2), obj1CenterY + sin * (obj1w / 2) + cos * (obj1h / 2)],
+			[obj1CenterX + cos * (-obj1w / 2) - sin * (obj1h / 2), obj1CenterY + sin * (-obj1w / 2) + cos * (obj1h / 2)]
 		];
-		cos = Math.cos((obj2.angle > 180) ? -obj2.angle : obj2.angle * Math.PI / 180);
-		sin = Math.sin((obj2.angle > 180) ? -obj2.angle : obj2.angle * Math.PI / 180);
+		
+		cos = Math.cos(obj2.angle * Math.PI / 180);
+		sin = Math.sin(obj2.angle * Math.PI / 180);
 		let b = [
-			[obj2.x + cos * (-obj2.w / 2) - sin * (-obj2.h / 2), obj2.y + sin * (-obj2.w / 2) + cos * (-obj2.h / 2)],
-			[obj2.x + cos * (obj2.w / 2) - sin * (-obj2.h / 2), obj2.y + sin * (obj2.w / 2) + cos * (-obj2.h / 2)],
-			[obj2.x + cos * (obj2.w / 2) - sin * (obj2.h / 2), obj2.y + sin * (obj2.w / 2) + cos * (obj2.h / 2)],
-			[obj2.x + cos * (-obj2.w / 2) - sin * (obj2.h / 2), obj2.y + sin * (-obj2.w / 2) + cos * (obj2.h / 2)]
+			[obj2CenterX + cos * (-obj2w / 2) - sin * (-obj2h / 2), obj2CenterY + sin * (-obj2w / 2) + cos * (-obj2h / 2)],
+			[obj2CenterX + cos * (obj2w / 2) - sin * (-obj2h / 2), obj2CenterY + sin * (obj2w / 2) + cos * (-obj2h / 2)],
+			[obj2CenterX + cos * (obj2w / 2) - sin * (obj2h / 2), obj2CenterY + sin * (obj2w / 2) + cos * (obj2h / 2)],
+			[obj2CenterX + cos * (-obj2w / 2) - sin * (obj2h / 2), obj2CenterY + sin * (-obj2w / 2) + cos * (obj2h / 2)]
 		];
 
 		for (let i = 0; i < 4; i++) {
@@ -2371,7 +2391,6 @@ Change everything to the same thing for scaling
 			}
 		}
 		return false;
-
 	}
 
 	function linesIntersect(p1, p2, p3, p4) {
@@ -2460,7 +2479,7 @@ Change everything to the same thing for scaling
 					left: ${p.x}; bottom: ${p.y}; z-index: ${i}; transform: rotate(${(p.angle != null) ? (-90-p.angle) : 0}deg);'>${p.id}</div>`;
 			}
 			if (assets.length != 0) {
-				for (let a of assets) {
+				for (let [i,a] of assets.entries()) {
 					game += `<div style='position: absolute; bottom: ${a.y}px; left: ${a.x}px; color: ${a.colour}; width: ${a.w}px; height: ${a.h}px;
 						background-color: ${a.colour}; transform: rotate(${(a.angle != null) ? (-90-a.angle) : 0}deg);'></div>`;
 				}
