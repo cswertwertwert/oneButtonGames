@@ -151,8 +151,6 @@ Use "npm i -g http-server" and "http-server" for codespace port
 /* TODO
 Readd controller players
 Add player queueing for dynamic arrays
-Consolidate audio playing into function
-Try canvas for resource heavier games
 Add control dials/button for needed games
 Change everything to the same thing for scaling
 */
@@ -279,62 +277,7 @@ Change everything to the same thing for scaling
 
 	}
 
-	function pong() {
-		if (gameState == 0) {
-			setPlayerAngles();
-			let radius = Math.min(maxX, maxY) / 2.5;
-			for (let p of players) {
-				if (p.status == "DEAD") continue;
-				p.x = maxX/2 + radius * Math.cos(p.angle*Math.PI/180);
-				p.y = maxY/2 + radius * Math.sin(p.angle*Math.PI/180);
-				p.w = 50;
-				p.h = 10;
-				p.angle0 = p.angle;
-			}
-			assets = [{
-				x: maxX/2 - 25, y: maxY/2 - 25, colour: "white", id: "ball",
-				w: 50, h: 50, angle: Math.random()*360, speed: Math.random()*5,
-			}];
-			gameState = 1;
-		}
-		if (gameState == 1) {
-			let radius = Math.min(maxX, maxY) / 2.5;
-			let limit = 360 / players.length / 2.5;
-			for (let p of players) {
-				if (p.pressed == 0) {
-					if (p.status == "DEAD") continue;
-					if (p.status == 0) p.angle += .5;
-					else p.angle -= .5;
-					if (p.angle > p.angle0 + limit) {
-						p.angle = p.angle0 + limit;
-						p.status = 1;
-					}
-					else if (p.angle < p.angle0 - limit) {
-						p.angle = p.angle0 - limit;
-						p.status = 0;
-					}
-					p.angle = Math.round(p.angle*10)/10;
-					p.x = Math.round(maxX/2 + radius * Math.cos(p.angle*Math.PI/180));
-					p.y = Math.round(maxY/2 + radius * Math.sin(p.angle*Math.PI/180));
-				}
-				if (!p.collisionBuffer || p.collisionBuffer <= 0) {
-					if (complicatedCollide(assets[0], p)) {
-						assets[0].angle = Math.round((p.angle - 180 + (Math.random() * 20 - 20))*10)/10;
-						if (rando.checked) {
-							assets[0].speed += Math.random()*2-1;
-							assets[0].w = Math.random()*40+10;
-							assets[0].h = Math.random()*40+10;
-						}
-						p.collisionBuffer = 10;
-					}
-				} else {
-					p.collisionBuffer--;
-				}
-			}
-			assets[0].x += Math.round(assets[0].speed * Math.cos(assets[0].angle*Math.PI/180));
-			assets[0].y += Math.round(assets[0].speed * Math.sin(assets[0].angle*Math.PI/180));
-		}
-	}
+	
 
 	function dodgeEm() {
 		if (gameState == 0) {
@@ -368,27 +311,6 @@ Change everything to the same thing for scaling
 
 	}
 
-//========================================== Finished Games ==========================================
-	function home() {
-		for (let p of players) {
-			if (p.h == null) {p.h = 50; p.w = 50; p.x = Math.random()*maxX; p.y = .5*maxY; p.dx = 0; p.dy = 0; p.colour = "white"; p.emoji = "😊";}
-			p.y += (p.pressed != 0) ? fps/2 : -fps/2;
-			if (p.y < 0) p.y = 0;
-			if (p.y > maxY-p.h) p.y = maxY-p.h;
-			if (p.y > maxY-1.1*p.h && p.status == 0) {
-				p.colour = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-				p.status = 1;
-			} else if (p.y < maxY-1.1*p.h) p.status = 0;
-			if (p.dx != 0) {
-				if (p.dx > 0) {p.x += 1; p.dx -= 1;}
-				else if (p.dx < 0 ) {p.x -= 1; p.dx += 1;}
-			}
-			if (p.x < 0) p.x = 0;
-				else if (p.x > maxX - p.w) p.x = maxX - p.w;
-			else if (p.dx == 0 && Math.random() < 0.01) p.dx = (Math.random() < .3) ? Math.round(Math.random()*200)-100 : 0;
-		}
-	}
-	
 	function firstToAnswer() {
 		if (players.length < 2) {gamemode = "rollCredits"; return;}
 		if (gameState == 0) {
@@ -546,36 +468,17 @@ Change everything to the same thing for scaling
 	}
 
 	function noiseMaker() {
-		if (gameState == 0) {
-			gZone.innerHTML = "";
-			gameState = 1;
-			temp = 0;
-		}
 		for (let p of players) {
 			if (p.pressed == currTime) {
-				if (rando.checked && gameState == 1) {
-					const audioCtx = new AudioContext();
-					let wave = ["sine","square","sawtooth","triangle"]
-					const oscNode = new OscillatorNode(audioCtx, {
-						type: wave[Math.floor(Math.random()*wave.length)],
-						frequency: (Math.random()*10000)+100,
-					});
-					const gainNode = new GainNode(audioCtx, {gain: 0.15});
-					oscNode.connect(gainNode).connect(audioCtx.destination);
-					oscNode.start();
-					setTimeout(() => oscNode.stop(), 300);
-					temp++;
-					gZone.innerHTML += `Player ${p.id} beeped<br>`;
-				} else {
-					var snd = new Audio("data:audio/mpeg;base64,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pNkvKe7///6f/96RUqCBiPQEKwQ//oGEByZUNlg2FciqMKQ6NUlANQi7MXCgMkqwN32rM4xBMNQnBQTlyBGIJfceAJ4ojLIBiL9SE+TL18YLW6amt0jEymUxM/RTySSSd7PM//uUZM2PA8A0zQO6eTAvIAqZBCM5kDTjMA754sC9haj0EBgI8R/TKa837X/+1NZOu7/6YTYpf6bFINHmgmidH2G6rjgN513X/7t0r3WtLs3AYKhEeMXiv7VOrpY704y1EYZ5+14ADDdTAbALE/xnjaKAQYRbMR7f/+ZRYQJEKwETPf/9v/L////hQhh8TFmMmzzwAEMYdGZHdHZNZK5Xq9YI2JlUw8NItQZKklAmsToiqgkcLyFBDkxW02nNiKSJl22AJMDy3McuOC0F3uUHEQpRGoX5gFtHkiykUHUvspHFbE27jQKOHHsayl6wpmbMeY5/nR17kgsyWBIAfeVw5D8/N0/b3/yJye/Qy/Oik0Pw9LZ5/pTU7Xz5z8InR408/hnPzUqoZialcYqa5+GP7zxyqfnqxvVi92B34kMKkEOw9LXZgL////////+WO8sb/m//ed2ZmKe7SU9uxbtWb4AAAAMCgJAACHDvD3o90KCUjgpiyqhc2AowHS13xDZz//uUZM8ABBcxzIV14AAtoxqtoIgAmbV7afmMABIVqeYvEvAAXUJelb/L5ltWHFWFtsy3NWIjJEe6/7c9a2tXdq//fd+1OTFGbWLvpO/fej7eczR1crv/C3JFbu5sO42XkFqfw6ySQdfDFPuBa+rZY8z0s7yum6zbpixqF//aW2r5392vjda61/5aBYQAAC6g2QVIsKULcTpCm8vxzGkdU72ieQ4cCoBYPpNQFQCxpQfHSqB0DY2GtVyhZa//5Va/VdVX5JFbVahpJFblai9ST2sFvLHpY8DT4NDD0sHCODTv9Z2VOiXBUedlQ3+YQsw/P//5f/1LQMBFmMZ1CgLqVuUrqVv/1L5aGAhgNVHtYKrBWIng1iLiU6CrpWpMQU1FMy4xMDCqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uUZHsP8wstT0c9AAAv5jhA4IgAAAABpAAAACAAADSAAAAEqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq").play();
-					gZone.innerHTML += `Player ${p.id} pewed<br>`;
-				}
+				let wave = ["sine","square","sawtooth","triangle"];
+				playSound({
+					frequency: (Math.random()*10000)+100,
+					type: wave[Math.floor(Math.random()*wave.length)],
+					duration: 100,
+					gain: 0.15
+				});
+				gZone.innerHTML += `Player ${p.id} beeped<br>`;
 			}
-		}
-		if (temp > 25) {
-			gameState = 2;
-			temp = -1000000;
-			setTimeout(() => {gameState = 0;},15000);
 		}
 	}
 
@@ -2341,6 +2244,129 @@ Change everything to the same thing for scaling
 		}
 	}
 
+//========================================== Finished Games ==========================================
+	function home() {
+		for (let p of players) {
+			if (p.h == null) {p.h = 50; p.w = 50; p.x = Math.random()*maxX; p.y = .5*maxY; p.dx = 0; p.dy = 0; p.colour = "white"; p.emoji = "😊";}
+			p.y += (p.pressed != 0) ? fps/2 : -fps/2;
+			if (p.y < 0) p.y = 0;
+			if (p.y > maxY-p.h) p.y = maxY-p.h;
+			if (p.y > maxY-1.1*p.h && p.status == 0) {
+				p.colour = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+				p.status = 1;
+			} else if (p.y < maxY-1.1*p.h) p.status = 0;
+			if (p.dx != 0) {
+				if (p.dx > 0) {p.x += 1; p.dx -= 1;}
+				else if (p.dx < 0 ) {p.x -= 1; p.dx += 1;}
+			}
+			if (p.x < 0) p.x = 0;
+				else if (p.x > maxX - p.w) p.x = maxX - p.w;
+			else if (p.dx == 0 && Math.random() < 0.01) p.dx = (Math.random() < .3) ? Math.round(Math.random()*200)-100 : 0;
+		}
+	}
+	
+	function pong() {
+		if (gameState == 0) {
+			setPlayerAngles();
+			let radius = Math.min(maxX, maxY) / 2.5;
+			let limit = (360 / players.filter(p => p.status != "DEAD").length)*.5;
+			assets = [{
+				x: maxX/2 - 25, y: maxY/2 - 25, colour: "white", id: "ball",
+				w: 25, h: 25, angle: Math.random()*360, speed: fps*.1*(Math.random()+1)
+			}];
+			for (let p of players) {
+				if (p.status == "DEAD") continue;
+				p.x = maxX/2 + radius * Math.cos(p.angle*Math.PI/180);
+				p.y = maxY/2 + radius * Math.sin(p.angle*Math.PI/180);
+				p.w = 50;
+				p.h = 10;
+				p.angle0 = p.angle;
+				assets.push({
+					x: maxX/2 + radius * Math.cos((p.angle0-limit)*Math.PI/180),
+					y: maxY/2 + radius * Math.sin((p.angle0-limit)*Math.PI/180),
+					colour: "white", w: 1, h: 50, angle: p.angle0-limit, id:"wall"+p.id
+				});
+			}
+			gameState = 1;
+		}
+		if (gameState == 1) {
+			let radius = Math.min(maxX, maxY) / 2.5;
+			let aliveCount = players.filter(p => p.status != "DEAD").length;
+			let limit = (360 / aliveCount)*.5;
+			for (let p of players) {
+				if (p.pressed != 0) {
+					if (p.status == "DEAD") continue;
+					if (p.status == 0) p.angle += fps*.05*(10/aliveCount);
+					else p.angle -= fps*.05*(10/aliveCount);
+					if (p.angle > p.angle0 + limit) {
+						p.angle = p.angle0 + limit;
+						p.status = 1;
+					}
+					else if (p.angle < p.angle0 - limit) {
+						p.angle = p.angle0 - limit;
+						p.status = 0;
+					}
+					p.angle = Math.round(p.angle*10)/10;
+					p.x = maxX/2 + radius * Math.cos(p.angle*Math.PI/180);
+					p.y = maxY/2 + radius * Math.sin(p.angle*Math.PI/180);
+					
+				}
+				if (!p.collisionBuffer || p.collisionBuffer <= 0) {
+					if (distanceCollide(assets[0], p)) {
+						assets[0].angle = p.angle - 180 + (Math.random() * 30 - 15);
+						while (assets[0].angle <= 0) assets[0].angle += 360;
+						while (assets[0].angle >= 360) assets[0].angle -= 360;
+						if (rando.checked) {
+							assets[0].speed = fps*.1*(Math.random()+1);
+							assets[0].w = Math.random()*40+10;
+							assets[0].h = Math.random()*40+10;
+						}
+						p.collisionBuffer = 20;
+						playSound({frequency:685,type:"square",duration:100});
+					}
+				} else {
+					p.collisionBuffer--;
+				}
+			}
+			assets[0].x += assets[0].speed * Math.cos(assets[0].angle*Math.PI/180);
+			assets[0].y += assets[0].speed * Math.sin(assets[0].angle*Math.PI/180);
+			let distFromCenter = Math.sqrt(
+				(assets[0].x + assets[0].w / 2 - maxX / 2) * (assets[0].x + assets[0].w / 2 - maxX / 2) +
+				(assets[0].y + assets[0].h / 2 - maxY / 2) * (assets[0].y + assets[0].h / 2 - maxY / 2)
+			);
+			if (distFromCenter > radius*1.2) {
+				for (let p of players) {
+					let pmin = p.angle0 - limit;
+					while (pmin < 0) pmin += 360;
+					let pmax = p.angle0 + limit;
+					while (pmax >= 360) pmax -= 360;
+					if (pmin < pmax) {
+						if (assets[0].angle >= pmin && assets[0].angle <= pmax) {
+							p.score++;
+							if (p.score > 0) p.status = "DEAD";
+							gameState = 0;
+						}
+					} else {
+						if (assets[0].angle >= pmin || assets[0].angle <= pmax) {
+							p.score++;
+							if (p.score > 0) p.status = "DEAD";
+							gameState = 0;
+						}
+					}
+				}
+				if (players.filter(p => p.status != "DEAD").length < 2) {
+					let winner = players.find(p => p.status != "DEAD");
+					players[players.findIndex(p => p.id == winner.id)].status = "DEAD";
+					assets = [{
+						text: `Player ${winner.id} won!`,
+						x: 0, y: 0, w:maxX, h:maxY, id: "win", colour: "transparent"
+					}];
+					gameState = 2;
+				}
+			}
+		}
+	}
+
 //========================================= Extra Functions ==========================================
 	function simpleCollide(obj1, obj2) {
 	  return (
@@ -2351,61 +2377,49 @@ Change everything to the same thing for scaling
 	  );
 	}
 
-	function complicatedCollide(obj1, obj2) {
-		// Adjust for display positioning - convert to center coordinates
-		// Expand collision boxes slightly for better contact
-		let obj1CenterX = obj1.x + obj1.w / 2;
-		let obj1CenterY = obj1.y + obj1.h / 2;
-		let obj2CenterX = obj2.x + obj2.w / 2;
-		let obj2CenterY = obj2.y + obj2.h / 2;
-		
-		// Make collision boxes slightly smaller to look better
-		let obj1w = obj1.w*.7;
-		let obj1h = obj1.h*.7;
-		let obj2w = obj2.w*.7;
-		let obj2h = obj2.h*.7;
-
-		let cos = Math.cos(obj1.angle * Math.PI / 180);
-		let sin = Math.sin(obj1.angle * Math.PI / 180);
-		let a = [
-			[obj1CenterX + cos * (-obj1w / 2) - sin * (-obj1h / 2), obj1CenterY + sin * (-obj1w / 2) + cos * (-obj1h / 2)],
-			[obj1CenterX + cos * (obj1w / 2) - sin * (-obj1h / 2), obj1CenterY + sin * (obj1w / 2) + cos * (-obj1h / 2)],
-			[obj1CenterX + cos * (obj1w / 2) - sin * (obj1h / 2), obj1CenterY + sin * (obj1w / 2) + cos * (obj1h / 2)],
-			[obj1CenterX + cos * (-obj1w / 2) - sin * (obj1h / 2), obj1CenterY + sin * (-obj1w / 2) + cos * (obj1h / 2)]
-		];
-		
-		cos = Math.cos(obj2.angle * Math.PI / 180);
-		sin = Math.sin(obj2.angle * Math.PI / 180);
-		let b = [
-			[obj2CenterX + cos * (-obj2w / 2) - sin * (-obj2h / 2), obj2CenterY + sin * (-obj2w / 2) + cos * (-obj2h / 2)],
-			[obj2CenterX + cos * (obj2w / 2) - sin * (-obj2h / 2), obj2CenterY + sin * (obj2w / 2) + cos * (-obj2h / 2)],
-			[obj2CenterX + cos * (obj2w / 2) - sin * (obj2h / 2), obj2CenterY + sin * (obj2w / 2) + cos * (obj2h / 2)],
-			[obj2CenterX + cos * (-obj2w / 2) - sin * (obj2h / 2), obj2CenterY + sin * (-obj2w / 2) + cos * (obj2h / 2)]
-		];
-
-		for (let i = 0; i < 4; i++) {
-			for (let j = 0; j < 4; j++) {
-				if (linesIntersect(a[i], a[(i+1)%4], b[j], b[(j+1)%4])) {
-					return true;
-				}
-			}
-		}
-		return false;
+	function distanceCollide(obj1, obj2) {
+		let dx = (obj1.x + obj1.w/2) - (obj2.x + obj2.w/2);
+		let dy = (obj1.y + obj1.h/2) - (obj2.y + obj2.h/2);
+		let threshold = Math.sqrt((obj1.w*obj1.h + obj2.w*obj2.h)/2)*.115;
+		if (Math.sqrt(dx*dx + dy*dy) < (obj1.w + obj2.w)/threshold) return true;
 	}
 
-	function linesIntersect(p1, p2, p3, p4) {
-		let x1 = p1[0], y1 = p1[1];
-		let x2 = p2[0], y2 = p2[1];
-		let x3 = p3[0], y3 = p3[1];
-		let x4 = p4[0], y4 = p4[1];
-		
-		let denom = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
-		if (denom === 0) return false; // parallel lines
-		
-		let t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4)) / denom;
-		let u = ((x1-x3)*(y1-y2) - (y1-y3)*(x1-x2)) / denom;
-		
-		return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+	function playSound(options = {}) {
+		const {
+			type = "sine",
+			frequency = 440,
+			gain = 0.15,
+			duration = 300,
+			detune = 0,
+			attack = 0,
+			release = 0,
+			pan = 0
+		} = options;
+		const ctx = new (window.AudioContext || window.webkitAudioContext)();
+		const osc = ctx.createOscillator();
+		const gainNode = ctx.createGain();
+		let panNode;
+		if (ctx.createStereoPanner) {
+			panNode = ctx.createStereoPanner();
+			panNode.pan.value = pan;
+		}
+		osc.type = type;
+		osc.frequency.value = frequency;
+		osc.detune.value = detune;
+		const now = ctx.currentTime;
+		// Envelope
+		gainNode.gain.setValueAtTime(0, now);
+		gainNode.gain.linearRampToValueAtTime(gain, now + attack / 1000);
+		gainNode.gain.setValueAtTime(gain, now + attack / 1000 + duration / 1000);
+		gainNode.gain.linearRampToValueAtTime(0, now + attack / 1000 + duration / 1000 + release / 1000);
+		if (panNode) {
+			osc.connect(gainNode).connect(panNode).connect(ctx.destination);
+		} else {
+			osc.connect(gainNode).connect(ctx.destination);
+		}
+		osc.start(now);
+		osc.stop(now + (attack + duration + release) / 1000);
+		osc.onended = () => ctx.close();
 	}
 
 	function minMaxScore() {
@@ -2464,9 +2478,10 @@ Change everything to the same thing for scaling
 	}
 
 	function setPlayerAngles() {
-		let alivePlayers = players.filter(p => p.status !== "Dead");
+		let alivePlayers = players.filter(p => p.status != "DEAD");
 		for (let i = 0; i < alivePlayers.length; i++) {
 			alivePlayers[i].angle = 360 * (i / alivePlayers.length);
+			alivePlayers[i].angle0 = alivePlayers[i].angle; // Add this line
 		}
 	}
 
@@ -2475,13 +2490,16 @@ Change everything to the same thing for scaling
 			gZone._cssInitialized = false;
 			let game = `<div class=game style='width: ${maxX}px; height: ${maxY}px;'>`;
 			for (let [i,p] of players.entries()) {
+				if (p.status == "DEAD") continue;
 				game += `<div style='background: ${p.colour}; position: absolute; width: ${p.w}; height: ${p.h};
-					left: ${p.x}; bottom: ${p.y}; z-index: ${i}; transform: rotate(${(p.angle != null) ? (-90-p.angle) : 0}deg);'>${p.id}</div>`;
+						left: ${p.x}; bottom: ${p.y}; z-index: ${i}; transform: rotate(${(p.angle != null) ? (-90-p.angle) : 0}deg);
+						'>${p.id}</div>`;
 			}
 			if (assets.length != 0) {
 				for (let [i,a] of assets.entries()) {
-					game += `<div style='position: absolute; bottom: ${a.y}px; left: ${a.x}px; color: ${a.colour}; width: ${a.w}px; height: ${a.h}px;
-						background-color: ${a.colour}; transform: rotate(${(a.angle != null) ? (-90-a.angle) : 0}deg);'></div>`;
+					game += `<div style='position: absolute; bottom: ${a.y}px; left: ${a.x}px; color: ${(a.fcolour) ? a.fcolour : ""};
+						 width: ${a.w}px; height: ${a.h}px; background: ${a.colour};
+						 transform: rotate(${(a.angle != null) ? (-90-a.angle) : 0}deg);'>${(a.text) ? a.text : ''}</div>`;
 				}
 			}
 			game += "</div>";
@@ -2503,6 +2521,7 @@ Change everything to the same thing for scaling
 			ctx = canvas.getContext("2d");
 			ctx.clearRect(0, 0, canvas.width, canvas.height);
 			for (let p of players) {
+				if (p.status == "DEAD") continue;
 				ctx.fillStyle = p.colour;
 				ctx.save();
 				if (p.angle != null) {
@@ -2512,7 +2531,7 @@ Change everything to the same thing for scaling
 					ctx.fillStyle = "rgb(200,200,200)";
 					ctx.font = "5rem Georgia";
 					let text = ctx.measureText(p.id);
-					ctx.fillText(p.id, -p.w / 2 + (p.w-text.width)/2, -p.h / 2 + p.h/2 + text.actualBoundingBoxAscent/2);
+					ctx.fillText(p.id, -p.w / 2 + (p.w-text.width)/2, text.actualBoundingBoxAscent+p.h);
 				} else {
 					ctx.fillRect(p.x, canvas.height*(1-p.y/maxY)-p.h, p.w, p.h);
 					ctx.fillStyle = "rgb(200,200,200)";
@@ -2529,11 +2548,22 @@ Change everything to the same thing for scaling
 					ctx.translate(a.x + a.w / 2, canvas.height * (1 - a.y / maxY) - a.h / 2);
 					ctx.rotate((-90-a.angle) * Math.PI / 180);
 					ctx.fillRect(-a.w / 2, -a.h / 2, a.w, a.h);
+					if (a.text != null) {
+						ctx.fillStyle = "rgb(200,200,200)";
+						ctx.font = "5rem Georgia";
+						let text = ctx.measureText(a.text);
+						ctx.fillText(a.text, a.x+(a.w-text.width)/2, canvas.height*(1-a.y/maxY)-a.h/2+text.actualBoundingBoxAscent/2);
+					}
 				}
 				else {
 					ctx.fillRect(a.x, canvas.height * (1 - a.y / maxY) - a.h, a.w, a.h);
+					if (a.text != null) {
+						ctx.fillStyle = "rgb(200,200,200)";
+						ctx.font = "5rem Georgia";
+						let text = ctx.measureText(a.text);
+						ctx.fillText(a.text, a.x+(a.w-text.width)/2, text.actualBoundingBoxAscent);
+					}
 				}
-				
 				ctx.restore();
 			}
 			return;
@@ -2541,20 +2571,7 @@ Change everything to the same thing for scaling
 		else if (displayType == "CSS") {
 			if (!gZone._cssInitialized) {
 				gZone._cssInitialized = true;
-				gZone.innerHTML = "";
-				let game = `<div class=game style='width: ${maxX}px; height: ${maxY}px;'>`;
-				for (let [i,p] of players.entries()) {
-					game += `<div id=p${p.id} style='background: ${p.colour}; position: absolute; width: ${p.w}; height: ${p.h};
-						left: ${p.x}; bottom: ${p.y}; z-index: ${i}; transform: rotate(${(p.angle != null) ? (-90-p.angle) : 0}deg);'>${p.id}</div>`;
-				}
-				if (assets.length != 0) {
-					for (let a of assets) {
-						game += `<div id=a${a.id} style='position: absolute; bottom: ${a.y}px; left: ${a.x}px; color: ${a.colour}; width: ${a.w}px; height: ${a.h}px;
-							background-color: ${a.colour}; transform: rotate(${(a.angle != null) ? (-90-a.angle) : 0}deg);'></div>`;
-					}
-				}
-				game += "</div>";
-				gZone.innerHTML = game;
+				gZone.innerHTML = "<div class=game style='width: ${maxX}px; height: ${maxY}px;'></div>";
 			}
 			gZone.firstChild.style.width = maxX + "px";
 			gZone.firstChild.style.height = maxY + "px";
@@ -2564,6 +2581,8 @@ Change everything to the same thing for scaling
 					gZone.firstChild.innerHTML += `<div id=p${p.id} style='position: absolute; z-index: ${i};'>${p.id}</div>`;
 					playerDiv = document.getElementById(`p${p.id}`);
 				}
+				if (p.status == "DEAD") playerDiv.style.display = "none";
+				else playerDiv.style.display = "";
 				playerDiv.style.background = p.colour;
 				playerDiv.style.width = p.w + "px";
 				playerDiv.style.height = p.h + "px";
@@ -2571,14 +2590,20 @@ Change everything to the same thing for scaling
 				playerDiv.style.bottom = p.y + "px";
 				playerDiv.style.transform = `rotate(${(p.angle != null) ? (-90-p.angle) : 0}deg)`;
 			}
+			let assetIds = assets.map(a => `a${a.id}`);
+			let existingAssetDivs = Array.from(gZone.firstChild.querySelectorAll('[id^="a"]'));
+			for (let div of existingAssetDivs) {
+				if (!assetIds.includes(div.id)) div.remove();
+			}
 			for (let a of assets) {
 				let assetDiv = document.getElementById(`a${a.id}`);
 				if (!assetDiv) {
-					gZone.firstChild.innerHTML += `<div id=a${a.id} style='position: absolute;'></div>`;
+					gZone.firstChild.innerHTML += `<div id=a${a.id} style='position: absolute;'>${(a.text) ? a.text : ''}</div>`;
 					assetDiv = document.getElementById(`a${a.id}`);
 				}
 				assetDiv.style.background = a.colour;
-				assetDiv.style.top = a.y + "px";
+				assetDiv.style.color = (a.fcolour) ? a.fcolour : "";
+				assetDiv.style.bottom = a.y + "px";
 				assetDiv.style.left = a.x + "px";
 				assetDiv.style.width = a.w + "px";
 				assetDiv.style.height = a.h + "px";
